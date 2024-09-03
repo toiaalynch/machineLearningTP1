@@ -15,13 +15,23 @@ def preprocess_kilometers(data, kilometers_column_index):
     cleaned_kilometers = np.array([float(value.replace(' km', '').replace(',', '')) for value in data[:, kilometers_column_index]])
     return cleaned_kilometers.reshape(-1, 1)
 
+# def preprocess_motor(data, motor_column_index):
+#     cleaned_motor = []
+#     for value in data[:, motor_column_index]:
+#         if "INYECCION MULTI PUNTO" in value:
+#             cleaned_motor.append(5)
+#         else:
+#             number_part = ''.join(filter(str.isdigit, value))
+#             cleaned_motor.append(float(number_part) if number_part else np.nan)
+#     return np.array(cleaned_motor).reshape(-1, 1)
+
 def preprocess_motor(data, motor_column_index):
     cleaned_motor = []
     for value in data[:, motor_column_index]:
         if "INYECCION MULTI PUNTO" in value:
-            cleaned_motor.append(5)
+            cleaned_motor.append(5.0)
         else:
-            number_part = ''.join(filter(str.isdigit, value))
+            number_part = ''.join([char for char in value if char.isdigit() or char == '.'])
             cleaned_motor.append(float(number_part) if number_part else np.nan)
     return np.array(cleaned_motor).reshape(-1, 1)
 
