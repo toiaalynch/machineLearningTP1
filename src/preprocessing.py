@@ -19,12 +19,10 @@ def preprocess_motor(data, motor_column_index):
     cleaned_motor = []
     for value in data[:, motor_column_index]:
         if "INYECCION MULTI PUNTO" in value:
-            cleaned_motor.append(5.0)  # Añadimos .0 para asegurar consistencia en tipo float
+            cleaned_motor.append(5)
         else:
-            # Extracción de la parte numérica
-            number_part = ''.join(filter(lambda x: x.isdigit() or x == '.', value))
+            number_part = ''.join(filter(str.isdigit, value))
             cleaned_motor.append(float(number_part) if number_part else np.nan)
-    
     return np.array(cleaned_motor).reshape(-1, 1)
 
 def preprocess_data(data):
