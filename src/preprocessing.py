@@ -1,186 +1,101 @@
-# import numpy as np
-# import os
-
-
-# def handle_missing_values(data):
-#     mask = np.all(data != '', axis=1)
-#     data = data[mask]
-#     return data
-
-
-# def one_hot_encode(data, column_index, categories):
-#     one_hot = np.zeros((data.shape[0], len(categories)))
-#     for i, category in enumerate(categories):
-#         one_hot[:, i] = np.array([1 if category in value else 0 for value in data[:, column_index]])
-#     return one_hot
-
-# def preprocess_kilometers(data, kilometers_column_index):
-#     cleaned_kilometers = np.array([float(value.replace(' km', '').replace(',', '')) for value in data[:, kilometers_column_index]])
-#     return cleaned_kilometers.reshape(-1, 1)
-
-# def preprocess_motor(data, motor_column_index):
-#     cleaned_motor = []
-#     for value in data[:, motor_column_index]:
-#         if "INYECCION MULTI PUNTO" in value:
-#             cleaned_motor.append(5.0)
-#         else:
-#             number_part = ''.join([char for char in value if char.isdigit() or char == '.'])
-#             cleaned_motor.append(float(number_part) if number_part else np.nan)
-#     return np.array(cleaned_motor).reshape(-1, 1)
-
-# def preprocess_data(data):
-#     data = handle_missing_values(data)
-    
-#     # Keep id and year as is
-#     processed_data = data[:, [0, 2]].astype(float)
-    
-#     # Convert 'Tipo' to numeric values
-#     type_map = {'Hilux SW4': 1, 'Corolla Cross': 2, 'Otro': 3}
-#     tipo = np.array([type_map.get(value, 3) for value in data[:, 1]]).reshape(-1, 1)
-#     processed_data = np.hstack((processed_data, tipo))
-    
-#     # One-Hot Encoding for 'Color'
-#     color_categories = ['Plateado', 'Blanco', 'Gris', 'Negro', 'Marrón', 'Rojo', 'Gris oscuro', 'Azul']
-#     color_encoded = one_hot_encode(data, 3, color_categories)
-#     processed_data = np.hstack((processed_data, color_encoded))
-    
-#     # One-Hot Encoding for 'Tipo de Combustible'
-#     fuel_categories = ['Nafta', 'Diésel', 'Nafta/GNC', 'Híbrido/Nafta', 'Eléctrico']
-#     fuel_encoded = one_hot_encode(data, 4, fuel_categories)
-#     processed_data = np.hstack((processed_data, fuel_encoded))
-    
-#     # One-Hot Encoding for 'Transmisión'
-#     transmission_categories = ['Automática', 'Manual']
-#     transmission_encoded = one_hot_encode(data, 5, transmission_categories)
-#     processed_data = np.hstack((processed_data, transmission_encoded))
-    
-#     # Process 'Motor'
-#     motor_encoded = preprocess_motor(data, 6)
-#     processed_data = np.hstack((processed_data, motor_encoded))
-    
-#     # Process 'Kilómetros'
-#     kilometers_encoded = preprocess_kilometers(data, 7)
-#     processed_data = np.hstack((processed_data, kilometers_encoded))
-    
-#     # One-Hot Encoding for 'Tipo de Vendedor'
-#     seller_categories = ['concesionaria', 'particular', 'tienda']
-#     seller_encoded = one_hot_encode(data, 8, seller_categories)
-#     processed_data = np.hstack((processed_data, seller_encoded))
-    
-#     # Add 'Precio'
-#     precio = data[:, 9].astype(float).reshape(-1, 1)
-#     processed_data = np.hstack((processed_data, precio))
-    
-#     return processed_data
-
-# # Load and preprocess data
-# dev_data = np.genfromtxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/raw/toyota_dev.csv', delimiter=',', skip_header=1, dtype=str)
-# test_data = np.genfromtxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/raw/toyota_test.csv', delimiter=',', skip_header=1, dtype=str)
-
-# # Process data
-# dev_data_processed = preprocess_data(dev_data)
-# test_data_processed = preprocess_data(test_data)
-
-# # Save processed data
-# np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_dev_processed.csv', dev_data_processed, delimiter=',', fmt='%s')
-# np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_test_processed.csv', test_data_processed, delimiter=',', fmt='%s')
-
-
 import numpy as np
 import os
 
-def handle_missing_values(data):
-    mask = np.all(data != '', axis=1)
+def handle_missing_values(data, color_column_index):
+    # Remove the 'color' column by its index
+    data = np.delete(data, color_column_index, axis=1)
+    
+    # Drop rows with any missing values
+    mask = ~np.any(data == '', axis=1)
     data = data[mask]
+    
     return data
 
 def one_hot_encode(data, column_index, categories):
+    # Create the one-hot encoded matrix
     one_hot = np.zeros((data.shape[0], len(categories)))
+    
+    # Perform the one-hot encoding
     for i, category in enumerate(categories):
-        one_hot[:, i] = np.array([1 if category in value else 0 for value in data[:, column_index]])
-    return one_hot
+        one_hot[:, i] = (data[:, column_index] == category).astype(int)
+    
+    # Remove the original column
+    data_without_column = np.delete(data, column_index, axis=1)
+    # Combine the one-hot encoded columns with the rest of the data
+    data_with_one_hot = np.hstack([data_without_column[:, :column_index], one_hot, data_without_column[:, column_index:]])
+    
+    return data_with_one_hot
 
 def preprocess_kilometers(data, kilometers_column_index):
+    # Process the 'km' column
     cleaned_kilometers = np.array([float(value.replace(' km', '').replace(',', '')) for value in data[:, kilometers_column_index]])
-    return cleaned_kilometers.reshape(-1, 1)
+    
+    # Replace the 'km' column in place with the cleaned kilometers
+    data[:, kilometers_column_index] = cleaned_kilometers
 
-def preprocess_motor(data, motor_column_index):
-    cleaned_motor = []
-    for value in data[:, motor_column_index]:
-        if "INYECCION MULTI PUNTO" in value:
-            cleaned_motor.append(5.0)
-        else:
-            number_part = ''.join([char for char in value if char.isdigit() or char == '.'])
-            cleaned_motor.append(float(number_part) if number_part else np.nan)
-    return np.array(cleaned_motor).reshape(-1, 1)
+    return data
+
+
+def extract_numeric_value(value):
+    number_part = ''.join([char for char in value if char.isdigit() or char == '.'])
+    
+    try:
+        return float(number_part)
+    except ValueError:
+        return None
+
+def process_motor(data, motor_column_index):
+    valid_rows = []
+
+    for i, value in enumerate(data[:, motor_column_index]):
+        motor_value = extract_numeric_value(value)
+        
+        if motor_value is not None:
+            data[i, motor_column_index] = motor_value
+            valid_rows.append(data[i])  
+
+    valid_data = np.array(valid_rows)
+
+    return valid_data
+
 
 def preprocess_data(data):
-    data = handle_missing_values(data)
+    # Step 1: Handle missing values and remove 'color' column (assuming 'color' is at index 3)
+    data = handle_missing_values(data, 3)
     
-    # Keep id and year as is
-    processed_data = data[:, [0, 2]].astype(float)
+    # Step 2: Keep 'id' column as it is (assuming 'id' is at index 0)
     
-    # Convert 'Tipo' to numeric values
-    type_map = {'Hilux SW4': 1, 'Corolla Cross': 2, 'Otro': 3}
-    tipo = np.array([type_map.get(value, 3) for value in data[:, 1]]).reshape(-1, 1)
-    processed_data = np.hstack((processed_data, tipo))
+    # Step 3: Perform one-hot encoding on 'tipo' (assuming 'tipo' is at index 1)
+    categories = ['Hilux SW4', 'Corolla Cross', 'RAV4']
+    data = one_hot_encode(data, 1, categories)
     
-    print("Tipo:", tipo[:10])  # Verificación de los primeros 10 valores de 'Tipo'
+     # Step 4: Extract the 'year' column (index 4), convert it to float, and reshape it
+    year_column = data[:, 4].astype(float).reshape(-1, 1)
     
-    # One-Hot Encoding for 'Color'
-    color_categories = ['Plateado', 'Blanco', 'Gris', 'Negro', 'Marrón', 'Rojo', 'Gris oscuro', 'Azul']
-    color_encoded = one_hot_encode(data, 3, color_categories)
-    processed_data = np.hstack((processed_data, color_encoded))
-    
-    print("Color Encoding Shape:", color_encoded.shape)  # Verificación de la forma del encoding de colores
-    print("Color Encoding:", color_encoded[:10])  # Verificación de los primeros 10 valores del encoding de colores
-    
-    # One-Hot Encoding for 'Tipo de Combustible'
+    # Step 5: Perform one-hot encoding on 'fuel_type' (assuming 'fuel_type' is at index 5)
     fuel_categories = ['Nafta', 'Diésel', 'Nafta/GNC', 'Híbrido/Nafta', 'Eléctrico']
-    fuel_encoded = one_hot_encode(data, 4, fuel_categories)
-    processed_data = np.hstack((processed_data, fuel_encoded))
-    
-    print("Fuel Encoding Shape:", fuel_encoded.shape)  # Verificación de la forma del encoding de tipo de combustible
-    print("Fuel Encoding:", fuel_encoded[:10])  # Verificación de los primeros 10 valores del encoding de tipo de combustible
-    
-    # One-Hot Encoding for 'Transmisión'
-    transmission_categories = ['Automática', 'Manual']
-    transmission_encoded = one_hot_encode(data, 5, transmission_categories)
-    processed_data = np.hstack((processed_data, transmission_encoded))
-    
-    print("Transmission Encoding Shape:", transmission_encoded.shape)  # Verificación de la forma del encoding de transmisión
-    print("Transmission Encoding:", transmission_encoded[:10])  # Verificación de los primeros 10 valores del encoding de transmisión
-    
-    # Process 'Motor'
-    motor_encoded = preprocess_motor(data, 6)
-    processed_data = np.hstack((processed_data, motor_encoded))
-    
-    print("Motor Encoding Shape:", motor_encoded.shape)  # Verificación de la forma del encoding de motor
-    print("Motor Encoding:", motor_encoded[:10])  # Verificación de los primeros 10 valores del encoding de motor
-    
-    # Process 'Kilómetros'
-    kilometers_encoded = preprocess_kilometers(data, 7)
-    processed_data = np.hstack((processed_data, kilometers_encoded))
-    
-    print("Kilometers Encoding Shape:", kilometers_encoded.shape)  # Verificación de la forma del encoding de kilómetros
-    print("Kilometers Encoding:", kilometers_encoded[:10])  # Verificación de los primeros 10 valores del encoding de kilómetros
-    
-    # One-Hot Encoding for 'Tipo de Vendedor'
+    data = one_hot_encode(data, 5, fuel_categories)
+
+    # Step 6: Perform one-hot encoding on 'transmission' (assuming 'transmission' is at index 10)
+    transmission_categories = ['Automática', 'Manual', 'Automática secuencial']
+    data = one_hot_encode(data, 10, transmission_categories)
+
+    # Step 7: Process 'motor' (assuming 'motor' is at index 13)
+    data = process_motor(data, 13)
+
+    # Step 8: Process 'km' (assuming 'km' is at index 14)
+    data = preprocess_kilometers(data, 14)
+
+    # Step 9: Perform one-hot encoding on 'seller_type' (assuming 'seller_type' is at index 15)
     seller_categories = ['concesionaria', 'particular', 'tienda']
-    seller_encoded = one_hot_encode(data, 8, seller_categories)
-    processed_data = np.hstack((processed_data, seller_encoded))
-    
-    print("Seller Encoding Shape:", seller_encoded.shape)  # Verificación de la forma del encoding de tipo de vendedor
-    print("Seller Encoding:", seller_encoded[:10])  # Verificación de los primeros 10 valores del encoding de tipo de vendedor
-    
-    # Add 'Precio'
-    precio = data[:, 9].astype(float).reshape(-1, 1)
-    processed_data = np.hstack((processed_data, precio))
-    
-    print("Precio Shape:", precio.shape)  # Verificación de la forma del precio
-    print("Precio:", precio[:10])  # Verificación de los primeros 10 valores del precio
-    
-    return processed_data
+    data = one_hot_encode(data, 15, seller_categories)
+
+    # Step 10: Keep 'price' column as it is (assuming 'price' is at index 18)
+
+
+    return data
+
+
 
 # Load and preprocess data
 dev_data = np.genfromtxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/raw/toyota_dev.csv', delimiter=',', skip_header=1, dtype=str)
@@ -193,3 +108,4 @@ test_data_processed = preprocess_data(test_data)
 # Save processed data
 np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_dev_processed.csv', dev_data_processed, delimiter=',', fmt='%s')
 np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_test_processed.csv', test_data_processed, delimiter=',', fmt='%s')
+
