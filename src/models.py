@@ -20,40 +20,58 @@ class RidgeRegression:
 
 
 class LocallyWeightedRegression:
-    def __init__(self, tau=1.0):
+    def __init__(self, tau):
         self.tau = tau
     
     def _weight_matrix(self, x, X_train):
         m = X_train.shape[0]
+        # Matriz de pesos (W) calculada en función de las distancias
         W = np.exp(-np.sum((X_train - x) ** 2, axis=1) / (2 * self.tau ** 2))
         return np.diag(W)
     
+    def _loss(self, theta, X_b, W, y_train):
+        predictions = X_b.dot(theta)
+        weighted_error = W.dot(predictions - y_train)
+        return np.sum(weighted_error ** 2)
+
     def predict(self, x, X_train, y_train):
+        # Agregar sesgo (bias) a los datos de entrenamiento
         X_b = np.c_[np.ones((X_train.shape[0], 1)), X_train]
-        x_b = np.r_[1, x]
-        W = self._weight_matrix(x_b, X_b)
-        XTWX = X_b.T.dot(W).dot(X_b)
-        theta = np.linalg.pinv(XTWX).dot(X_b.T).dot(W).dot(y_train)
-        return x_b.dot(theta)
+        x_b = np.r_[1, x]  # Sesgo para la instancia actual
+        W = self._weight_matrix(x_b, X_b)  # Matriz de pesos
+        
+        # Optimizar los coeficientes (theta) para esta predicción específica
+        initial_theta = np.random.randn(X_b.shape[1])
+        
+        # Usar scipy.optimize para minimizar la pérdida local
+        result = minimize(self._loss, initial_theta, args=(X_b, W, y_train), method='BFGS')
+        
+        # Predicción con los parámetros optimizados
+        theta_opt = result.x
+        return x_b.dot(theta_opt)
+
 
 
 class NonLinearRegression:
-    def __init__(self, degree=2):
-        self.degree = degree
-        self.theta = None
-    
-    def _polynomial_features(self, X):
-        m, n = X.shape
-        X_poly = np.ones((m, 1))
-        for i in range(1, self.degree + 1):
-            for j in range(n):
-                X_poly = np.c_[X_poly, X[:, j] ** i]
-        return X_poly
+    def __init__(self):
+        self.theta = None  # Inicializamos los parámetros a ajustar (a y b)
     
     def fit(self, X, y):
-        X_poly = self._polynomial_features(X)
-        self.theta = np.linalg.inv(X_poly.T.dot(X_poly)).dot(X_poly.T).dot(y)
-    
+        # Tomar el logaritmo natural de X para transformar la variable
+        X_log = np.log(X)
+        
+        # Agregar una columna de 1s para el término de sesgo (bias)
+        X_b = np.c_[np.ones((X_log.shape[0], 1)), X_log]
+        
+        # Resolver usando la ecuación normal para ajustar a y b
+        self.theta = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y)
+
     def predict(self, X):
-        X_poly = self._polynomial_features(X)
-        return X_poly.dot(self.theta)
+        # Agregar una columna de 1s para el término de sesgo (bias)
+        X_b = np.c_[np.ones((X.shape[0], 1)), X]
+        
+        # Calcular las predicciones en el espacio logarítmico
+        y_log_pred = X_b.dot(self.theta)
+        
+        # Volver al espacio original exponenciando los resultados
+        return np.exp(y_log_pred)

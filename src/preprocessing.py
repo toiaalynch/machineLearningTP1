@@ -1,5 +1,5 @@
 import numpy as np
-import os
+from sklearn.preprocessing import StandardScaler
 
 def handle_missing_values(data, color_column_index):
     # Remove the 'color' column by its index
@@ -60,52 +60,39 @@ def process_motor(data, motor_column_index):
 
 
 def preprocess_data(data):
-    # Step 1: Handle missing values and remove 'color' column (assuming 'color' is at index 3)
-    data = handle_missing_values(data, 3)
-    
-    # Step 2: Keep 'id' column as it is (assuming 'id' is at index 0)
-    
-    # Step 3: Perform one-hot encoding on 'tipo' (assuming 'tipo' is at index 1)
+    data = handle_missing_values(data, 3)    
     categories = ['Hilux SW4', 'Corolla Cross', 'RAV4']
     data = one_hot_encode(data, 1, categories)
-    
-     # Step 4: Extract the 'year' column (index 4), convert it to float, and reshape it
     year_column = data[:, 4].astype(float).reshape(-1, 1)
-    
-    # Step 5: Perform one-hot encoding on 'fuel_type' (assuming 'fuel_type' is at index 5)
     fuel_categories = ['Nafta', 'Diésel', 'Nafta/GNC', 'Híbrido/Nafta', 'Eléctrico']
     data = one_hot_encode(data, 5, fuel_categories)
-
-    # Step 6: Perform one-hot encoding on 'transmission' (assuming 'transmission' is at index 10)
     transmission_categories = ['Automática', 'Manual', 'Automática secuencial']
     data = one_hot_encode(data, 10, transmission_categories)
-
-    # Step 7: Process 'motor' (assuming 'motor' is at index 13)
     data = process_motor(data, 13)
-
-    # Step 8: Process 'km' (assuming 'km' is at index 14)
     data = preprocess_kilometers(data, 14)
-
-    # Step 9: Perform one-hot encoding on 'seller_type' (assuming 'seller_type' is at index 15)
     seller_categories = ['concesionaria', 'particular', 'tienda']
     data = one_hot_encode(data, 15, seller_categories)
-
-    # Step 10: Keep 'price' column as it is (assuming 'price' is at index 18)
-
-
     return data
 
+def normalize_data(data):
+    scaler = StandardScaler()
+    return scaler.fit_transform(data)
 
 
-# Load and preprocess data
 dev_data = np.genfromtxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/raw/toyota_dev.csv', delimiter=',', skip_header=1, dtype=str)
 test_data = np.genfromtxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/raw/toyota_test.csv', delimiter=',', skip_header=1, dtype=str)
 
-# Process data
 dev_data_processed = preprocess_data(dev_data)
 test_data_processed = preprocess_data(test_data)
 
-# Save processed data
 np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_dev_processed.csv', dev_data_processed, delimiter=',', fmt='%s')
 np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_test_processed.csv', test_data_processed, delimiter=',', fmt='%s')
+
+dev_data_normalized = normalize_data(dev_data_processed)
+test_data_normalized = normalize_data(test_data_processed)
+
+# Guardar los datos procesados y normalizados
+np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_dev_processed_normalized.csv', dev_data_normalized, delimiter=',', fmt='%.6f')
+np.savetxt('/Users/victoria/Desktop/5tocuatrimestre/ml/tps/tp2ml/machineLearning/data/processed/toyota_test_processed_normalized.csv', test_data_normalized, delimiter=',', fmt='%.6f')
+
 
